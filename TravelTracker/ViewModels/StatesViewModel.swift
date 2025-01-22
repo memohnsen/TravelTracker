@@ -142,22 +142,34 @@ class StatesViewModel: ObservableObject {
     }
     
     private func loadVisitedStates() {
-        if let data = UserDefaults.standard.data(forKey: "VisitedStates"),
-           let decoded = try? JSONDecoder().decode(Set<String>.self, from: data) {
+        // Load basic visited states set
+        if let visitedData = UserDefaults.standard.data(forKey: "VisitedStates"),
+           let decoded = try? JSONDecoder().decode(Set<String>.self, from: visitedData) {
             visitedStates = decoded
-            
-            // Update states with visit dates
-            for stateId in visitedStates {
-                if let index = states.firstIndex(where: { $0.id == stateId }) {
-                    states[index].visitDate = Date()
+        }
+        
+        // Load states with their visit dates
+        if let statesData = UserDefaults.standard.data(forKey: "StatesWithDates"),
+           let decodedStates = try? JSONDecoder().decode([USState].self, from: statesData) {
+            // Update states array with saved visit dates
+            for savedState in decodedStates {
+                if let index = states.firstIndex(where: { $0.id == savedState.id }) {
+                    states[index].visitDate = savedState.visitDate
                 }
             }
         }
     }
     
     func saveVisitedStates() {
+        // Save basic visited states set
         if let encoded = try? JSONEncoder().encode(visitedStates) {
             UserDefaults.standard.set(encoded, forKey: "VisitedStates")
+        }
+        
+        // Save states with their visit dates
+        let statesWithDates = states.filter { $0.visitDate != nil }
+        if let encoded = try? JSONEncoder().encode(statesWithDates) {
+            UserDefaults.standard.set(encoded, forKey: "StatesWithDates")
         }
     }
     
