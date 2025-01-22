@@ -113,11 +113,72 @@ struct PassportView: View {
         return renderer.uiImage ?? UIImage()
     }
     
+    func badgesEarnedInYear(_ year: Int?) -> [Badge] {
+        return Badge.allBadges.filter { badge in
+            guard let date = badge.getLatestVisitDate(from: viewModel.states) else {
+                return false
+            }
+            
+            if let year = year {
+                return Calendar.current.component(.year, from: date) == year
+            } else {
+                // For "all" time view, show all earned badges
+                return true
+            }
+        }
+    }
+    
     var body: some View {
         TabView(selection: $selectedYear) {
             ForEach(visitYears, id: \.self) { year in
-                YearView(year: year, states: year == "all" ? allTimeStates : statesForYear(Int(year) ?? 0))
-                    .tag(year)
+                VStack(spacing: 24) {
+                    StatsView(
+                        states: selectedYear == "all" ? allTimeStates : statesForYear(Int(year) ?? 0),
+                        isYearView: selectedYear != "all"
+                    )
+                    
+                    let badges = badgesEarnedInYear(year == "all" ? nil : Int(year))
+                    if !badges.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Badges Earned")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(badges) { badge in
+                                        VStack(spacing: 8) {
+                                            Image(systemName: badge.imageName)
+                                                .font(.title)
+                                                .foregroundStyle(.yellow)
+                                            
+                                            Text(badge.name)
+                                                .font(.caption)
+                                                .multilineTextAlignment(.center)
+                                            
+                                            if let date = badge.getLatestVisitDate(from: viewModel.states) {
+                                                Text(date.formatted(date: .abbreviated, time: .omitted))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .frame(width: 80)
+                                        .padding()
+                                        .background {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color(.systemBackground))
+                                                .shadow(color: .black.opacity(0.1), radius: 5)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .tag(year)
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
