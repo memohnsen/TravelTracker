@@ -30,7 +30,7 @@ struct ContentView: View {
                         .navigationBarTitleDisplayMode(.inline)
                 }
                 .tabItem {
-                    Label("States", systemImage: "list.bullet")
+                    Label("List", systemImage: "list.bullet")
                 }
                 
                 SettingsView()

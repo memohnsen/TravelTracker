@@ -3,6 +3,7 @@ import SwiftUI
 struct ListView: View {
     @EnvironmentObject var viewModel: StatesViewModel
     @State private var sortOption = SortOption.alphabetical
+    @State private var filterOption = FilterOption.all
     @State private var selectedState: USState?
     @State private var isShowingDatePicker = false
     
@@ -12,12 +13,26 @@ struct ListView: View {
         case visitDateOldest
     }
     
-    var sortedStates: [USState] {
+    enum FilterOption {
+        case all
+        case visited
+        case notVisited
+    }
+    
+    var filteredAndSortedStates: [USState] {
+        let filtered = viewModel.states.filter { state in
+            switch filterOption {
+            case .all: return true
+            case .visited: return viewModel.visitedStates.contains(state.id)
+            case .notVisited: return !viewModel.visitedStates.contains(state.id)
+            }
+        }
+        
         switch sortOption {
         case .alphabetical:
-            return viewModel.states.sorted { $0.name < $1.name }
+            return filtered.sorted { $0.name < $1.name }
         case .visitDateNewest:
-            return viewModel.states.sorted { state1, state2 in
+            return filtered.sorted { state1, state2 in
                 switch (state1.visitDate, state2.visitDate) {
                 case (nil, nil): return state1.name < state2.name
                 case (nil, _): return false
@@ -26,7 +41,7 @@ struct ListView: View {
                 }
             }
         case .visitDateOldest:
-            return viewModel.states.sorted { state1, state2 in
+            return filtered.sorted { state1, state2 in
                 switch (state1.visitDate, state2.visitDate) {
                 case (nil, nil): return state1.name < state2.name
                 case (nil, _): return false
@@ -38,7 +53,7 @@ struct ListView: View {
     }
     
     var body: some View {
-        List(sortedStates) { state in
+        List(filteredAndSortedStates) { state in
             HStack {
                 VStack(alignment: .leading) {
                     Text(state.name)
@@ -63,9 +78,30 @@ struct ListView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                VStack(spacing: 0) {
-                    Spacer()
-                        .frame(height: 80)
+                HStack(spacing: 16) {
+                    Menu {
+                        Button {
+                            filterOption = .all
+                        } label: {
+                            Label("All States", systemImage: filterOption == .all ? "checkmark" : "")
+                        }
+                        
+                        Button {
+                            filterOption = .visited
+                        } label: {
+                            Label("Visited", systemImage: filterOption == .visited ? "checkmark" : "")
+                        }
+                        
+                        Button {
+                            filterOption = .notVisited
+                        } label: {
+                            Label("Not Visited", systemImage: filterOption == .notVisited ? "checkmark" : "")
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .foregroundStyle(filterOption == .all ? .gray : .blue)
+                    }
+                    
                     Menu {
                         Button {
                             sortOption = .alphabetical
@@ -87,9 +123,9 @@ struct ListView: View {
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
                     }
-                    Spacer()
-                        .frame(height: 80)
                 }
+                .padding(.top, 80)
+                .padding(.bottom, 80)
             }
         }
         .sheet(item: $selectedState) { state in

@@ -4,6 +4,8 @@ import SwiftUI
 class StatesViewModel: ObservableObject {
     @Published var states: [USState]
     @Published var visitedStates: Set<String> = []
+    @Published var newlyEarnedBadge: Badge? = nil
+    private var earnedBadges: Set<String> = []
     
     init() {
         // Initialize with all US states
@@ -60,7 +62,57 @@ class StatesViewModel: ObservableObject {
             USState(id: "WY", name: "Wyoming", latitude: 42.7475, longitude: -107.2085),
         ]
         
+        // Load earned badges
+        if let data = UserDefaults.standard.data(forKey: "EarnedBadges"),
+           let decoded = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            earnedBadges = decoded
+        }
+        
         loadVisitedStates()
+    }
+    
+    func checkForNewBadges() {
+        for badge in Badge.allBadges {
+            if !earnedBadges.contains(badge.id) && isEarned(badge) {
+                newlyEarnedBadge = badge
+                earnedBadges.insert(badge.id)
+                saveEarnedBadges()
+                
+                // Reset after a delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    self.newlyEarnedBadge = nil
+                }
+                break // Show only one badge at a time
+            }
+        }
+    }
+    
+    private func isEarned(_ badge: Badge) -> Bool {
+        switch badge.id {
+        case "fifty_percent":
+            return visitedStates.count >= 25
+        case "all_states":
+            return visitedStates.count == 50
+        case "east_coast":
+            let eastCoastStates = ["ME", "NH", "MA", "RI", "CT", "NY", "NJ", "PA", "DE", "MD", "VA", "NC", "SC", "GA", "FL"]
+            return Set(eastCoastStates).isSubset(of: visitedStates)
+        case "west_coast":
+            let westCoastStates = ["CA", "OR", "WA", "AK"]
+            return Set(westCoastStates).isSubset(of: visitedStates)
+        case "gulf_coast":
+            let gulfStates = ["FL", "AL", "MS", "LA", "TX"]
+            return Set(gulfStates).isSubset(of: visitedStates)
+        case "four_corners":
+            let cornerStates = ["UT", "CO", "AZ", "NM"]
+            return Set(cornerStates).isSubset(of: visitedStates)
+        case "great_lakes":
+            let greatLakesStates = ["MN", "WI", "IL", "IN", "MI", "OH", "PA", "NY"]
+            return Set(greatLakesStates).isSubset(of: visitedStates)
+        case "hawaii_alaska":
+            return visitedStates.contains("HI") && visitedStates.contains("AK")
+        default:
+            return false
+        }
     }
     
     func toggleStateVisited(_ stateId: String) {
@@ -69,6 +121,7 @@ class StatesViewModel: ObservableObject {
             if state.visitDate == nil {
                 state.visitDate = Date()
                 visitedStates.insert(stateId)
+                checkForNewBadges() // Check for badges after adding a state
             } else {
                 state.visitDate = nil
                 visitedStates.remove(stateId)
@@ -108,6 +161,12 @@ class StatesViewModel: ObservableObject {
         }
     }
     
+    private func saveEarnedBadges() {
+        if let encoded = try? JSONEncoder().encode(earnedBadges) {
+            UserDefaults.standard.set(encoded, forKey: "EarnedBadges")
+        }
+    }
+    
     func resetAllProgress() {
         // Clear all visit dates
         for index in states.indices {
@@ -115,7 +174,10 @@ class StatesViewModel: ObservableObject {
         }
         // Clear visited states set
         visitedStates.removeAll()
+        // Clear earned badges
+        earnedBadges.removeAll()
         // Save changes
         saveVisitedStates()
+        saveEarnedBadges()
     }
 } 

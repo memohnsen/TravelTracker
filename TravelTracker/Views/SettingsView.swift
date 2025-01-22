@@ -22,11 +22,26 @@ struct SettingsView: View {
                         Text("\(Int((Float(viewModel.visitedStates.count) / 50.0) * 100))%")
                             .foregroundColor(.secondary)
                     }
+                    
+                    NavigationLink {
+                        BadgesView()
+                    } label: {
+                        HStack {
+                            Text("Badges")
+                            Spacer()
+                            Text("\(viewModel.visitedStates.isEmpty ? "0" : String(Badge.allBadges.count))")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    NavigationLink {
+                        PassportView()
+                    } label: {
+                        Text("Passport")
+                    }
                 }
                 
                 Section("App Settings") {
-                    Toggle("Show US Territories", isOn: $showTerritories)
-                    
                     Button(role: .destructive) {
                         showingResetConfirmation = true
                     } label: {

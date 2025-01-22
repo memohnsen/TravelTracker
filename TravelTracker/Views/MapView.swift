@@ -7,6 +7,8 @@ struct MapView: View {
         center: CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795), // Center of US
         span: MKCoordinateSpan(latitudeDelta: 30, longitudeDelta: 30) // Reduced from 60 to 45 for closer zoom
     ))
+    @State private var badgeScale: CGFloat = 0.5
+    @State private var badgeOpacity: Double = 0
     
     var body: some View {
         ZStack {
@@ -97,6 +99,55 @@ struct MapView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 30) // Added extra bottom padding to move it up
+            }
+            
+            // Badge achievement overlay
+            if let badge = viewModel.newlyEarnedBadge {
+                VStack {
+                    Spacer()
+                    
+                    VStack(spacing: 16) {
+                        Image(systemName: badge.imageName)
+                            .font(.system(size: 60))
+                            .foregroundStyle(.yellow)
+                        
+                        Text("New Badge Earned!")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        
+                        Text(badge.name)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                        
+                        Text(badge.description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                    .background {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(.ultraThinMaterial)
+                            .shadow(radius: 10)
+                    }
+                    .scaleEffect(badgeScale)
+                    .opacity(badgeOpacity)
+                    
+                    Spacer()
+                }
+                .padding()
+                .transition(.opacity)
+                .onAppear {
+                    withAnimation(.spring(duration: 0.5)) {
+                        badgeScale = 1.0
+                        badgeOpacity = 1.0
+                    }
+                }
+                .onDisappear {
+                    badgeScale = 0.5
+                    badgeOpacity = 0
+                }
             }
         }
     }
