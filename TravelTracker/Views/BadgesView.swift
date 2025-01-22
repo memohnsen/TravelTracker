@@ -4,39 +4,11 @@ struct BadgesView: View {
     @EnvironmentObject var viewModel: StatesViewModel
     
     var earnedBadges: [Badge] {
-        Badge.allBadges.filter { badge in
-            switch badge.id {
-            case "fifty_percent":
-                return viewModel.visitedStates.count >= 25
-            case "all_states":
-                return viewModel.visitedStates.count == 50
-            case "east_coast":
-                let eastCoastStates = ["ME", "NH", "MA", "RI", "CT", "NY", "NJ", "PA", "DE", "MD", "VA", "NC", "SC", "GA", "FL"]
-                return Set(eastCoastStates).isSubset(of: viewModel.visitedStates)
-            case "west_coast":
-                let westCoastStates = ["CA", "OR", "WA", "AK"]
-                return Set(westCoastStates).isSubset(of: viewModel.visitedStates)
-            case "gulf_coast":
-                let gulfStates = ["FL", "AL", "MS", "LA", "TX"]
-                return Set(gulfStates).isSubset(of: viewModel.visitedStates)
-            case "four_corners":
-                let cornerStates = ["UT", "CO", "AZ", "NM"]
-                return Set(cornerStates).isSubset(of: viewModel.visitedStates)
-            case "great_lakes":
-                let greatLakesStates = ["MN", "WI", "IL", "IN", "MI", "OH", "PA", "NY"]
-                return Set(greatLakesStates).isSubset(of: viewModel.visitedStates)
-            case "hawaii_alaska":
-                return viewModel.visitedStates.contains("HI") && viewModel.visitedStates.contains("AK")
-            default:
-                return false
-            }
-        }
+        Badge.allBadges.filter { viewModel.isEarned($0) }
     }
     
     var unclaimedBadges: [Badge] {
-        Badge.allBadges.filter { badge in
-            !earnedBadges.contains { $0.id == badge.id }
-        }
+        Badge.allBadges.filter { !viewModel.isEarned($0) }
     }
     
     var body: some View {
@@ -44,14 +16,22 @@ struct BadgesView: View {
             if !earnedBadges.isEmpty {
                 Section("Earned") {
                     ForEach(earnedBadges) { badge in
-                        BadgeRow(badge: badge, isEarned: true)
+                        BadgeRow(
+                            badge: badge,
+                            isEarned: true,
+                            latestVisitDate: badge.getLatestVisitDate(from: viewModel.states)
+                        )
                     }
                 }
             }
             
             Section("Unearned") {
                 ForEach(unclaimedBadges) { badge in
-                    BadgeRow(badge: badge, isEarned: false)
+                    BadgeRow(
+                        badge: badge,
+                        isEarned: false,
+                        latestVisitDate: nil
+                    )
                 }
             }
         }
@@ -62,6 +42,14 @@ struct BadgesView: View {
 struct BadgeRow: View {
     let badge: Badge
     let isEarned: Bool
+    let latestVisitDate: Date?
+    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
     
     var body: some View {
         HStack {
@@ -77,6 +65,12 @@ struct BadgeRow: View {
                 Text(badge.description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                
+                if isEarned, let date = latestVisitDate {
+                    Text("Earned \(dateFormatter.string(from: date))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             
             Spacer()

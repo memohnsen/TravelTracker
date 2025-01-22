@@ -87,12 +87,16 @@ class StatesViewModel: ObservableObject {
         }
     }
     
-    private func isEarned(_ badge: Badge) -> Bool {
+    func isEarned(_ badge: Badge) -> Bool {
         switch badge.id {
         case "fifty_percent":
             return visitedStates.count >= 25
         case "all_states":
             return visitedStates.count == 50
+        case "continental":
+            let nonContinental = Set(["HI", "AK"])
+            let continentalStates = Set(states.map { $0.id }).subtracting(nonContinental)
+            return continentalStates.isSubset(of: visitedStates)
         case "east_coast":
             let eastCoastStates = ["ME", "NH", "MA", "RI", "CT", "NY", "NJ", "PA", "DE", "MD", "VA", "NC", "SC", "GA", "FL"]
             return Set(eastCoastStates).isSubset(of: visitedStates)
@@ -112,23 +116,19 @@ class StatesViewModel: ObservableObject {
             let newEnglandStates = ["ME", "NH", "VT", "MA", "RI", "CT"]
             return Set(newEnglandStates).isSubset(of: visitedStates)
         case "mountain":
-            let mountainStates = ["MT", "ID", "WY", "NV", "UT", "CO"]
+            let mountainStates = ["MT", "ID", "WY", "NV", "UT", "CO", "AZ", "NM"]
             return Set(mountainStates).isSubset(of: visitedStates)
         case "southwest":
             let southwestStates = ["AZ", "NM", "TX", "OK"]
             return Set(southwestStates).isSubset(of: visitedStates)
         case "south":
-            let southernStates = ["AR", "LA", "MS", "AL", "GA", "SC", "NC", "TN", "KY"]
+            let southernStates = ["AR", "LA", "MS", "AL", "GA", "SC", "NC", "TN", "KY", "VA", "WV"]
             return Set(southernStates).isSubset(of: visitedStates)
         case "four_corners":
             let cornerStates = ["UT", "CO", "AZ", "NM"]
             return Set(cornerStates).isSubset(of: visitedStates)
         case "hawaii_alaska":
             return visitedStates.contains("HI") && visitedStates.contains("AK")
-        case "continental":
-            let nonContinental = Set(["HI", "AK"])
-            let continentalStates = Set(states.map { $0.id }).subtracting(nonContinental)
-            return continentalStates.isSubset(of: visitedStates)
         default:
             return false
         }
@@ -140,14 +140,32 @@ class StatesViewModel: ObservableObject {
             if state.visitDate == nil {
                 state.visitDate = Date()
                 visitedStates.insert(stateId)
-                checkForNewBadges() // Check for badges after adding a state
+                checkForNewBadges() // Check for new badges after adding a state
             } else {
                 state.visitDate = nil
                 visitedStates.remove(stateId)
+                checkForLostBadges() // Check if any badges should be removed
             }
             states[index] = state
             saveVisitedStates()
         }
+    }
+    
+    private func checkForLostBadges() {
+        // Create a temporary set to store badges that should remain
+        var remainingBadges = Set<String>()
+        
+        // Check each currently earned badge
+        for badgeId in earnedBadges {
+            if let badge = Badge.allBadges.first(where: { $0.id == badgeId }),
+               isEarned(badge) {
+                remainingBadges.insert(badgeId)
+            }
+        }
+        
+        // Update earnedBadges with only the badges that still qualify
+        earnedBadges = remainingBadges
+        saveEarnedBadges()
     }
     
     func updateVisitDate(for stateId: String, date: Date) {
@@ -157,6 +175,7 @@ class StatesViewModel: ObservableObject {
             states[index] = state
             visitedStates.insert(stateId)
             saveVisitedStates()
+            checkForNewBadges() // Check for new badges after updating a date
         }
     }
     

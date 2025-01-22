@@ -28,4 +28,63 @@ struct Badge: Identifiable, Codable {
         Badge(id: "four_corners", name: "Four Corners", description: "Visit all four corner states", imageName: "square.grid.2x2.fill"),
         Badge(id: "hawaii_alaska", name: "Non-Continental", description: "Visit both Hawaii and Alaska", imageName: "airplane.circle.fill")
     ]
+    
+    // New function to calculate the latest visit date for a badge
+    func getLatestVisitDate(from states: [USState]) -> Date? {
+        let relevantStates: Set<String>
+        
+        switch id {
+        case "fifty_percent":
+            // For percentage badges, use all visited states
+            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+            guard relevantStates.count >= 25 else { return nil }
+            
+        case "all_states":
+            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+            guard relevantStates.count == 50 else { return nil }
+            
+        case "continental":
+            let nonContinental = Set(["HI", "AK"])
+            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+                .subtracting(nonContinental)
+            guard relevantStates.count == 48 else { return nil }
+            
+        case "east_coast":
+            let eastCoastStates = Set(["ME", "NH", "MA", "RI", "CT", "NY", "NJ", "PA", "DE", "MD", "VA", "NC", "SC", "GA", "FL"])
+            relevantStates = eastCoastStates
+            
+        case "west_coast":
+            let westCoastStates = Set(["CA", "OR", "WA", "AK"])
+            relevantStates = westCoastStates
+            
+        case "gulf_coast":
+            let gulfStates = Set(["FL", "AL", "MS", "LA", "TX"])
+            relevantStates = gulfStates
+            
+        case "midwest":
+            let midwestStates = Set(["ND", "SD", "NE", "KS", "MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH"])
+            relevantStates = midwestStates
+            
+        case "new_england":
+            let newEnglandStates = Set(["ME", "NH", "VT", "MA", "RI", "CT"])
+            relevantStates = newEnglandStates
+            
+        case "hawaii_alaska":
+            let nonContinental = Set(["HI", "AK"])
+            relevantStates = nonContinental
+            
+        default:
+            return nil
+        }
+        
+        // Get all visit dates for relevant states
+        let visitDates = states
+            .filter { relevantStates.contains($0.id) && $0.visitDate != nil }
+            .compactMap { $0.visitDate }
+        
+        // Return the latest date if all required states are visited
+        return !visitDates.isEmpty && visitDates.count == relevantStates.count
+            ? visitDates.max()
+            : nil
+    }
 } 
