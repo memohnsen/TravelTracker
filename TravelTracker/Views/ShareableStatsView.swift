@@ -11,7 +11,7 @@ struct ShareableStatsView: View {
     }
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             // Safe area spacer for Dynamic Island/Notch
             Color.clear
                 .frame(height: 60)
@@ -27,10 +27,10 @@ struct ShareableStatsView: View {
                     .font(.title3)
                     .foregroundColor(.white.opacity(0.9))
             }
-            .padding(.top, 20) // Additional padding to ensure text is below cutout
+            .padding(.top, 20)
             
             // Stats Grid
-            VStack(spacing: 32) {
+            VStack(spacing: 24) {
                 // Progress Circle
                 ZStack {
                     Circle()
@@ -57,46 +57,44 @@ struct ShareableStatsView: View {
                             .foregroundColor(.white.opacity(0.9))
                     }
                 }
-                .frame(width: 200, height: 200)
+                .frame(width: 160, height: 160)
                 
-                // Stats Grid
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                    StatItem(title: "Completion", value: "\(Int((Float(states.count) / 50.0) * 100))%")
-                    
-                    if let firstVisit = states.last?.visitDate {
-                        StatItem(
-                            title: "First Visit",
-                            value: firstVisit.formatted(date: .abbreviated, time: .omitted)
-                        )
-                    }
-                    
-                    if let latestVisit = states.first?.visitDate {
-                        StatItem(
-                            title: "Latest Visit",
-                            value: latestVisit.formatted(date: .abbreviated, time: .omitted)
-                        )
-                    }
+                // Simplified Stats Grid
+                LazyVGrid(columns: [GridItem(.flexible())], spacing: 16) {
+                    StatItem(
+                        title: "Completion",
+                        value: "\(Int((Float(states.count) / 50.0) * 100))%"
+                    )
                 }
             }
             
             // Badges Section (if any badges earned)
             if !badges.isEmpty {
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     Text("Badges Earned")
                         .font(.headline)
                         .foregroundColor(.white)
                     
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.adaptive(minimum: 70, maximum: 80), spacing: 12),
+                            GridItem(.adaptive(minimum: 70, maximum: 80), spacing: 12),
+                            GridItem(.adaptive(minimum: 70, maximum: 80), spacing: 12)
+                        ],
+                        spacing: 12
+                    ) {
                         ForEach(badges) { badge in
                             VStack(spacing: 4) {
                                 Image(systemName: badge.imageName)
-                                    .font(.title2)
-                                    .foregroundStyle(.yellow)
+                                    .font(.title3)
+                                    .foregroundStyle(.white)
                                 
                                 Text(badge.name)
                                     .font(.caption2)
                                     .foregroundColor(.white)
                                     .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .frame(height: 24)
                                 
                                 if let date = badge.getLatestVisitDate(from: states) {
                                     Text(date.formatted(date: .abbreviated, time: .omitted))
@@ -104,8 +102,8 @@ struct ShareableStatsView: View {
                                         .foregroundColor(.white.opacity(0.7))
                                 }
                             }
-                            .frame(width: 90)
-                            .padding(.vertical, 8)
+                            .frame(height: 70)
+                            .padding(8)
                             .background {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(.white.opacity(0.1))
@@ -113,10 +111,10 @@ struct ShareableStatsView: View {
                         }
                     }
                 }
-                .padding(.top)
+                .padding(.top, 8)
             }
             
-            Spacer()
+            Spacer(minLength: 0)
             
             // Footer
             HStack {
@@ -129,7 +127,7 @@ struct ShareableStatsView: View {
             .foregroundColor(.white.opacity(0.9))
         }
         .padding(32)
-        .frame(width: 390, height: 844) // iPhone 14 dimensions
+        .frame(width: 390, height: 844)
         .background {
             LinearGradient(
                 colors: [
