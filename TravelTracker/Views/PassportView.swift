@@ -3,6 +3,16 @@ import SwiftUI
 struct PassportView: View {
     @EnvironmentObject var viewModel: StatesViewModel
     @State private var selectedYear: String = "all"
+    @State private var shareImage: Image?
+    @State private var isShareSheetPresented = false
+    
+    var navigationTitle: String {
+        if selectedYear == "all" {
+            return "All Time Passport"
+        } else {
+            return "\(selectedYear) Passport"
+        }
+    }
     
     var visitYears: [String] {
         let calendar = Calendar.current
@@ -10,8 +20,8 @@ struct PassportView: View {
             guard let visitDate = state.visitDate else { return nil }
             return calendar.component(.year, from: visitDate)
         }
-        let uniqueYears = Array(Set(years)).sorted(by: <)
-        return uniqueYears.map { String($0) } + ["all"]
+        let uniqueYears = Array(Set(years)).sorted(by: >)  // Reversed order so newest is first
+        return ["all"] + uniqueYears.map { String($0) }  // "all" at the start
     }
     
     var filteredStates: [USState] {
@@ -38,55 +48,147 @@ struct PassportView: View {
         }.sorted { $0.visitDate ?? Date() > $1.visitDate ?? Date() }
     }
     
+    var currentYearIndex: Int {
+        visitYears.firstIndex(of: selectedYear) ?? 0
+    }
+    
+    var canGoBack: Bool {
+        currentYearIndex > 0
+    }
+    
+    var canGoForward: Bool {
+        currentYearIndex < visitYears.count - 1
+    }
+    
+    func createShareMessage(for states: [USState]) -> String {
+        let stateCount = states.count
+        let percentage = Int((Float(stateCount) / 50.0) * 100)
+        let timeframe = selectedYear == "all" ? "total" : "in \(selectedYear)"
+        
+        var message = "🗺 My US Travel Progress \(timeframe):\n"
+        message += "• Visited \(stateCount) states (\(percentage)% of the US)\n"
+        
+        if let firstVisit = states.last?.visitDate,
+           let lastVisit = states.first?.visitDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = selectedYear == "all" ? "MMM d, yyyy" : "MMM d"
+            
+            if firstVisit != lastVisit {
+                message += "• First visit: \(dateFormatter.string(from: firstVisit))\n"
+                message += "• Latest visit: \(dateFormatter.string(from: lastVisit))\n"
+            }
+        }
+        
+        // Add earned badges for the timeframe
+        let earnedBadges = Badge.allBadges.filter { badge in
+            switch badge.id {
+            case "fifty_percent":
+                return stateCount >= 25
+            case "all_states":
+                return stateCount == 50
+            // Add other badge checks as needed
+            default:
+                return false
+            }
+        }
+        
+        if !earnedBadges.isEmpty {
+            message += "\n🏆 Badges earned:\n"
+            earnedBadges.forEach { badge in
+                message += "• \(badge.name)\n"
+            }
+        }
+        
+        message += "\nTracked with Travel Tracker 🧭"
+        return message
+    }
+    
+    func generateShareImage(for states: [USState]) -> UIImage {
+        let timeframe = selectedYear == "all" ? "All Time" : selectedYear
+        let renderer = ImageRenderer(content: ShareableStatsView(
+            states: states,
+            timeframe: timeframe
+        ))
+        renderer.scale = UIScreen.main.scale
+        return renderer.uiImage ?? UIImage()
+    }
+    
     var body: some View {
-        List {
-            if !visitYears.isEmpty {
-                Picker("Timeframe", selection: $selectedYear) {
-                    ForEach(visitYears, id: \.self) { year in
-                        Text(year == "all" ? "All Time" : year)
-                            .tag(year)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .padding(.vertical, 8)
-                
-                if filteredStates.isEmpty {
-                    Section {
-                        Text("No states visited")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-                    }
-                } else {
-                    Section {
-                        StatsView(
-                            states: filteredStates,
-                            isYearView: selectedYear != "all"
-                        )
+        TabView(selection: $selectedYear) {
+            ForEach(visitYears, id: \.self) { year in
+                YearView(year: year, states: year == "all" ? allTimeStates : statesForYear(Int(year) ?? 0))
+                    .tag(year)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .navigationTitle(navigationTitle)
+        .animation(.default, value: navigationTitle)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    let image = generateShareImage(
+                        for: selectedYear == "all" ? allTimeStates : statesForYear(Int(selectedYear) ?? 0)
+                    )
+                    let activityVC = UIActivityViewController(
+                        activityItems: [image],
+                        applicationActivities: nil
+                    )
+                    
+                    // For iPad
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = windowScene.windows.first,
+                       let rootVC = window.rootViewController {
+                        activityVC.popoverPresentationController?.sourceView = rootVC.view
+                        activityVC.popoverPresentationController?.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+                        activityVC.popoverPresentationController?.permittedArrowDirections = []
                     }
                     
-                    Section(selectedYear == "all" ? "All States Visited" : "States Visited in \(selectedYear)") {
-                        ForEach(filteredStates) { state in
-                            StateVisitRow(state: state)
-                        }
+                    // Present the share sheet
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = windowScene.windows.first,
+                       let rootVC = window.rootViewController {
+                        rootVC.present(activityVC, animated: true)
                     }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
                 }
-            } else {
+            }
+        }
+        .onAppear {
+            selectedYear = "all"
+        }
+    }
+}
+
+struct YearView: View {
+    let year: String
+    let states: [USState]
+    
+    var body: some View {
+        List {
+            if states.isEmpty {
                 Section {
-                    Text("No states visited yet")
+                    Text("No states visited")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 }
+            } else {
+                Section {
+                    StatsView(
+                        states: states,
+                        isYearView: year != "all"
+                    )
+                }
+                
+                Section(year == "all" ? "All States Visited" : "States Visited in \(year)") {
+                    ForEach(states) { state in
+                        StateVisitRow(state: state)
+                    }
+                }
             }
         }
-        .navigationTitle("Passport")
-        .onAppear {
-            // Set initial selection to current year if it exists, otherwise "all"
-            let currentYear = String(Calendar.current.component(.year, from: Date()))
-            selectedYear = visitYears.contains(currentYear) ? currentYear : "all"
-        }
+        .listStyle(.insetGrouped)
     }
 }
 
