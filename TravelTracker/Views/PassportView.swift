@@ -131,19 +131,17 @@ struct PassportView: View {
     var body: some View {
         TabView(selection: $selectedYear) {
             ForEach(visitYears, id: \.self) { year in
-                VStack(spacing: 24) {
-                    StatsView(
-                        states: selectedYear == "all" ? allTimeStates : statesForYear(Int(year) ?? 0),
-                        isYearView: selectedYear != "all"
-                    )
+                List {
+                    Section {
+                        StatsView(
+                            states: selectedYear == "all" ? allTimeStates : statesForYear(Int(year) ?? 0),
+                            isYearView: selectedYear != "all"
+                        )
+                    }
                     
                     let badges = badgesEarnedInYear(year == "all" ? nil : Int(year))
                     if !badges.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Badges Earned")
-                                .font(.headline)
-                                .padding(.horizontal)
-                            
+                        Section("Badges Earned") {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 16) {
                                     ForEach(badges) { badge in
@@ -155,6 +153,8 @@ struct PassportView: View {
                                             Text(badge.name)
                                                 .font(.caption)
                                                 .multilineTextAlignment(.center)
+                                                .lineLimit(2)
+                                                .frame(height: 32)
                                             
                                             if let date = badge.getLatestVisitDate(from: viewModel.states) {
                                                 Text(date.formatted(date: .abbreviated, time: .omitted))
@@ -162,7 +162,7 @@ struct PassportView: View {
                                                     .foregroundStyle(.secondary)
                                             }
                                         }
-                                        .frame(width: 80)
+                                        .frame(width: 80, height: 120)
                                         .padding()
                                         .background {
                                             RoundedRectangle(cornerRadius: 12)
@@ -172,12 +172,29 @@ struct PassportView: View {
                                     }
                                 }
                                 .padding(.horizontal)
+                                .padding(.vertical, 8)
                             }
+                            .padding(.vertical, 8)
                         }
                     }
                     
-                    Spacer()
+                    let states = year == "all" ? allTimeStates : statesForYear(Int(year) ?? 0)
+                    if !states.isEmpty {
+                        Section(year == "all" ? "All States Visited" : "States Visited in \(year)") {
+                            ForEach(states) { state in
+                                StateVisitRow(state: state)
+                            }
+                        }
+                    } else {
+                        Section {
+                            Text("No states visited")
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding()
+                        }
+                    }
                 }
+                .listStyle(.insetGrouped)
                 .tag(year)
             }
         }

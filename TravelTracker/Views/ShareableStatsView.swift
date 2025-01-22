@@ -4,9 +4,133 @@ struct ShareableStatsView: View {
     let states: [USState]
     let timeframe: String
     
+    private var badges: [Badge] {
+        Badge.allBadges.filter { badge in
+            badge.getLatestVisitDate(from: states) != nil
+        }
+    }
+    
     var body: some View {
-        ZStack {
-            // Background gradient
+        VStack(spacing: 24) {
+            // Safe area spacer for Dynamic Island/Notch
+            Color.clear
+                .frame(height: 60)
+            
+            // Header
+            VStack(spacing: 8) {
+                Text("My US Travel Progress")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text(timeframe)
+                    .font(.title3)
+                    .foregroundColor(.white.opacity(0.9))
+            }
+            .padding(.top, 20) // Additional padding to ensure text is below cutout
+            
+            // Stats Grid
+            VStack(spacing: 32) {
+                // Progress Circle
+                ZStack {
+                    Circle()
+                        .stroke(.white.opacity(0.3), lineWidth: 20)
+                    
+                    Circle()
+                        .trim(from: 0, to: CGFloat(states.count) / 50.0)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.white, .white.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 20, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                    
+                    VStack {
+                        Text("\(states.count)")
+                            .font(.system(size: 44, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("STATES")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+                .frame(width: 200, height: 200)
+                
+                // Stats Grid
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                    StatItem(title: "Completion", value: "\(Int((Float(states.count) / 50.0) * 100))%")
+                    
+                    if let firstVisit = states.last?.visitDate {
+                        StatItem(
+                            title: "First Visit",
+                            value: firstVisit.formatted(date: .abbreviated, time: .omitted)
+                        )
+                    }
+                    
+                    if let latestVisit = states.first?.visitDate {
+                        StatItem(
+                            title: "Latest Visit",
+                            value: latestVisit.formatted(date: .abbreviated, time: .omitted)
+                        )
+                    }
+                }
+            }
+            
+            // Badges Section (if any badges earned)
+            if !badges.isEmpty {
+                VStack(spacing: 16) {
+                    Text("Badges Earned")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                        ForEach(badges) { badge in
+                            VStack(spacing: 4) {
+                                Image(systemName: badge.imageName)
+                                    .font(.title2)
+                                    .foregroundStyle(.yellow)
+                                
+                                Text(badge.name)
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.center)
+                                
+                                if let date = badge.getLatestVisitDate(from: states) {
+                                    Text(date.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.caption2)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                            .frame(width: 90)
+                            .padding(.vertical, 8)
+                            .background {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(.white.opacity(0.1))
+                            }
+                        }
+                    }
+                }
+                .padding(.top)
+            }
+            
+            Spacer()
+            
+            // Footer
+            HStack {
+                Text("Tracked with")
+                Text("Travel Tracker")
+                    .fontWeight(.semibold)
+                Text("🧭")
+            }
+            .font(.footnote)
+            .foregroundColor(.white.opacity(0.9))
+        }
+        .padding(32)
+        .frame(width: 390, height: 844) // iPhone 14 dimensions
+        .background {
             LinearGradient(
                 colors: [
                     Color.blue.opacity(0.8),
@@ -15,15 +139,13 @@ struct ShareableStatsView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .ignoresSafeArea()
             
-            // Background pattern
+            // Subtle wave pattern
             GeometryReader { geometry in
                 Path { path in
                     let width = geometry.size.width
                     let height = geometry.size.height
                     
-                    // Create a subtle wave pattern
                     path.move(to: CGPoint(x: 0, y: height * 0.3))
                     path.addCurve(
                         to: CGPoint(x: width, y: height * 0.4),
@@ -35,93 +157,7 @@ struct ShareableStatsView: View {
                 }
                 .fill(Color.white.opacity(0.1))
             }
-            
-            // Content
-            VStack(spacing: 24) {
-                Color.clear
-                    .frame(height: 60)
-                
-                // Header
-                VStack(spacing: 8) {
-                    Text("My US Travel Progress")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    
-                    Text(timeframe)
-                        .font(.title3)
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                
-                // Stats Grid
-                VStack(spacing: 32) {
-                    // Progress Circle
-                    ZStack {
-                        Circle()
-                            .stroke(.white.opacity(0.3), lineWidth: 20)
-                        
-                        Circle()
-                            .trim(from: 0, to: CGFloat(states.count) / 50.0)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [.white, .white.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                style: StrokeStyle(lineWidth: 20, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                        
-                        VStack {
-                            Text("\(states.count)")
-                                .font(.system(size: 44, weight: .bold))
-                                .foregroundColor(.white)
-                            Text("STATES")
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.9))
-                        }
-                    }
-                    .frame(width: 200, height: 200)
-                    
-                    // Stats Grid
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                        StatItem(title: "Completion", value: "\(Int((Float(states.count) / 50.0) * 100))%")
-                        
-                        if let firstVisit = states.last?.visitDate {
-                            StatItem(
-                                title: "First Visit",
-                                value: firstVisit.formatted(date: .abbreviated, time: .omitted)
-                            )
-                        }
-                        
-                        if let latestVisit = states.first?.visitDate {
-                            StatItem(
-                                title: "Latest Visit",
-                                value: latestVisit.formatted(date: .abbreviated, time: .omitted)
-                            )
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Footer
-                HStack {
-                    Text("Tracked with")
-                    Text("Travel Tracker")
-                        .fontWeight(.semibold)
-                    Text("🧭")
-                }
-                .font(.footnote)
-                .foregroundColor(.white.opacity(0.9))
-                
-                Color.clear
-                    .frame(height: 20)
-            }
-            .padding(32)
         }
-        .frame(width: 390, height: 844)
-        .background(Color.black) // Fallback background
     }
 }
 

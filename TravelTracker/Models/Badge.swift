@@ -61,6 +61,10 @@ struct Badge: Identifiable, Codable {
             let gulfStates = Set(["FL", "AL", "MS", "LA", "TX"])
             relevantStates = gulfStates
             
+        case "great_lakes":
+            let greatLakesStates = Set(["MN", "WI", "IL", "IN", "MI", "OH", "PA", "NY"])
+            relevantStates = greatLakesStates
+            
         case "midwest":
             let midwestStates = Set(["ND", "SD", "NE", "KS", "MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH"])
             relevantStates = midwestStates
@@ -68,6 +72,22 @@ struct Badge: Identifiable, Codable {
         case "new_england":
             let newEnglandStates = Set(["ME", "NH", "VT", "MA", "RI", "CT"])
             relevantStates = newEnglandStates
+            
+        case "mountain":
+            let mountainStates = Set(["MT", "ID", "WY", "NV", "UT", "CO", "AZ", "NM"])
+            relevantStates = mountainStates
+            
+        case "southwest":
+            let southwestStates = Set(["AZ", "NM", "TX", "OK"])
+            relevantStates = southwestStates
+            
+        case "south":
+            let southernStates = Set(["AR", "LA", "MS", "AL", "GA", "SC", "NC", "TN", "KY", "VA", "WV"])
+            relevantStates = southernStates
+            
+        case "four_corners":
+            let cornerStates = Set(["UT", "CO", "AZ", "NM"])
+            relevantStates = cornerStates
             
         case "hawaii_alaska":
             let nonContinental = Set(["HI", "AK"])
