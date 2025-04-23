@@ -33,10 +33,13 @@ struct ContentView: View {
                     Label("List", systemImage: "list.bullet")
                 }
                 
-                SettingsView()
-                    .tabItem {
-                        Label("Settings", systemImage: "gear")
-                    }
+                NavigationStack {
+                    SettingsView()
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
             }
             .environmentObject(viewModel)
         }

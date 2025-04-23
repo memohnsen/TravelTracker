@@ -48,15 +48,6 @@ struct SettingsView: View {
                         Text("Reset All Progress")
                     }
                 }
-                
-                Section("About") {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(.secondary)
-                    }
-                }
             }
             .navigationTitle("Settings")
             .alert("Reset Progress", isPresented: $showingResetConfirmation) {
