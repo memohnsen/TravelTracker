@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "icon_1024x1024.png",
+      "filename" : "ChatGPT Image Apr 22 2025 Recreate.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "dark_icon_1024x1024.png",
+      "filename" : "trans.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,6 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "dark_icon_1024x1024 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

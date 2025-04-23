@@ -71,7 +71,7 @@ struct SplashView: View {
                 .scaleEffect(iconScale)
                 
                 // App Title
-                Text("Travel Tracker")
+                Text("TrekBook")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
