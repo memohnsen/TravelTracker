@@ -152,12 +152,12 @@ struct ListView: View {
                                     viewModel.updateVisitDates(for: state.id, newDate: Date())
                                 }
                                 if !state.visitDates.isEmpty {
-                                    ForEach(Array(state.visitDates.sorted(by: >).enumerated()), id: \.element) { idx, date in
+                                    ForEach(state.visitDates.indices, id: \.self) { idx in
                                         HStack {
                                             DatePicker(
                                                 "Visited",
                                                 selection: Binding(
-                                                    get: { date },
+                                                    get: { state.visitDates[idx] },
                                                     set: { newDate in
                                                         viewModel.updateVisitDate(for: state.id, at: idx, newDate: newDate)
                                                     }

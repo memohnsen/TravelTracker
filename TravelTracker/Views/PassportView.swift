@@ -148,6 +148,7 @@ struct PassportView: View {
     struct StatsView: View {
         let states: [USState]
         let isYearView: Bool
+        let selectedYear: String
         
         private func formatDate(_ date: Date) -> String {
             if isYearView {
@@ -166,8 +167,17 @@ struct PassportView: View {
                 HStack(spacing: 16) {
                     StatBox(title: "States Visited", value: "\(states.count)")
                 }
-                if let firstVisit = states.compactMap({ $0.visitDates.min() }).min(),
-                   let lastVisit = states.compactMap({ $0.visitDates.max() }).max() {
+                // Fix: Use the correct year for filtering visit dates
+                let allVisitDates: [Date] = {
+                    if isYearView, let year = Int(selectedYear) {
+                        let calendar = Calendar.current
+                        return states.flatMap { $0.visitDates }.filter { calendar.component(.year, from: $0) == year }
+                    } else {
+                        return states.flatMap { $0.visitDates }
+                    }
+                }()
+                if let firstVisit = allVisitDates.min(),
+                   let lastVisit = allVisitDates.max() {
                     HStack(spacing: 16) {
                         StatBox(
                             title: "First Visit",
@@ -187,13 +197,20 @@ struct PassportView: View {
     
     struct StateVisitRow: View {
         let state: USState
+        let year: Int? // nil means show all years
+        
+        var filteredVisitDates: [Date] {
+            guard let year = year else { return state.visitDates }
+            let calendar = Calendar.current
+            return state.visitDates.filter { calendar.component(.year, from: $0) == year }
+        }
         
         var body: some View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(state.name)
                         .font(.headline)
-                    ForEach(state.visitDates.sorted(by: >), id: \.self) { visitDate in
+                    ForEach(filteredVisitDates.sorted(by: >), id: \.self) { visitDate in
                         Text(visitDate.formatted(date: .long, time: .omitted))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -211,11 +228,11 @@ struct PassportView: View {
             ForEach(visitYears, id: \.self) { year in
                 List {
                     Section {
-                        StatsView(states: filteredStates, isYearView: selectedYear != "all")
+                        StatsView(states: filteredStates, isYearView: selectedYear != "all", selectedYear: selectedYear)
                     }
                     Section(year == "all" ? "All States Visited" : "States Visited in \(year)") {
                         ForEach(filteredStates) { state in
-                            StateVisitRow(state: state)
+                            StateVisitRow(state: state, year: selectedYear == "all" ? nil : Int(selectedYear))
                         }
                     }
                 }
