@@ -54,72 +54,75 @@ struct PassportView: View {
         currentYearIndex < visitYears.count - 1
     }
     
-    func createShareMessage(for states: [USState]) -> String {
-        let stateCount = states.count
+    func createShareMessage(for states: [USState], selectedYear: String) -> String {
+        let calendar = Calendar.current
+        let filteredStates: [USState] = {
+            if selectedYear == "all" {
+                return states
+            } else if let year = Int(selectedYear) {
+                return states.compactMap { state in
+                    let yearDates = state.visitDates.filter { calendar.component(.year, from: $0) == year }
+                    return yearDates.isEmpty ? nil : USState(id: state.id, name: state.name, latitude: state.coordinates.latitude, longitude: state.coordinates.longitude, visitDates: yearDates)
+                }
+            } else {
+                return states
+            }
+        }()
+        let stateCount = filteredStates.count
         let percentage = Int((Float(stateCount) / 50.0) * 100)
         let timeframe = selectedYear == "all" ? "total" : "in \(selectedYear)"
-        
         var message = "🗺 My US Travel Progress \(timeframe):\n"
         message += "• Visited \(stateCount) states (\(percentage)% of the US)\n"
-        
-        if let firstVisit = states.compactMap({ $0.visitDates.min() }).min(),
-           let lastVisit = states.compactMap({ $0.visitDates.max() }).max() {
+        if let firstVisit = filteredStates.compactMap({ $0.visitDates.min() }).min(),
+           let lastVisit = filteredStates.compactMap({ $0.visitDates.max() }).max() {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = selectedYear == "all" ? "MMM d, yyyy" : "MMM d"
-            
             if firstVisit != lastVisit {
                 message += "• First visit: \(dateFormatter.string(from: firstVisit))\n"
                 message += "• Latest visit: \(dateFormatter.string(from: lastVisit))\n"
             }
         }
-        
-        // Add earned badges for the timeframe
+        // Add earned badges for the timeframe (keep as before)
         let earnedBadges = Badge.allBadges.filter { badge in
             switch badge.id {
             case "fifty_percent":
                 return stateCount >= 25
             case "all_states":
                 return stateCount == 50
-            // Add other badge checks as needed
             default:
                 return false
             }
         }
-        
         if !earnedBadges.isEmpty {
-            message += "\n🏆 Badges earned:\n"
             earnedBadges.forEach { badge in
                 message += "• \(badge.name)\n"
             }
         }
-        
-        message += "\nTracked with Travel Tracker 🧭"
+        message += "\nTracked with TrekBook 🧭"
         return message
     }
     
-    func generateShareImage(for states: [USState]) -> UIImage {
+    func generateShareImage(for states: [USState], selectedYear: String) -> UIImage {
+        let calendar = Calendar.current
+        let filteredStates: [USState] = {
+            if selectedYear == "all" {
+                return states
+            } else if let year = Int(selectedYear) {
+                return states.compactMap { state in
+                    let yearDates = state.visitDates.filter { calendar.component(.year, from: $0) == year }
+                    return yearDates.isEmpty ? nil : USState(id: state.id, name: state.name, latitude: state.coordinates.latitude, longitude: state.coordinates.longitude, visitDates: yearDates)
+                }
+            } else {
+                return states
+            }
+        }()
         let timeframe = selectedYear == "all" ? "All Time" : selectedYear
         let renderer = ImageRenderer(content: ShareableStatsView(
-            states: states,
+            states: filteredStates,
             timeframe: timeframe
         ))
         renderer.scale = UIScreen.main.scale
         return renderer.uiImage ?? UIImage()
-    }
-    
-    func badgesEarnedInYear(_ year: Int?) -> [Badge] {
-        return Badge.allBadges.filter { badge in
-            guard let date = badge.getLatestVisitDate(from: viewModel.states) else {
-                return false
-            }
-            
-            if let year = year {
-                return Calendar.current.component(.year, from: date) == year
-            } else {
-                // For "all" time view, show all earned badges
-                return true
-            }
-        }
     }
     
     struct StatBox: View {
@@ -157,17 +160,19 @@ struct PassportView: View {
                 return formatter.string(from: date)
             } else {
                 let formatter = DateFormatter()
-                formatter.dateFormat = "MMM d, yyyy"
+                formatter.dateFormat = "MM/dd/yy"
                 return formatter.string(from: date)
             }
         }
         
         var body: some View {
             VStack(spacing: 20) {
+                // Stats box area
                 HStack(spacing: 16) {
                     StatBox(title: "States Visited", value: "\(states.count)")
+                    let percentage = Int((Float(states.count) / 50.0) * 100)
+                    StatBox(title: "% of US", value: "\(percentage)%")
                 }
-                // Fix: Use the correct year for filtering visit dates
                 let allVisitDates: [Date] = {
                     if isYearView, let year = Int(selectedYear) {
                         let calendar = Calendar.current
@@ -223,12 +228,57 @@ struct PassportView: View {
         }
     }
     
+    var badgesCard: some View {
+        let yearInt: Int? = selectedYear == "all" ? nil : Int(selectedYear)
+        let badges: [Badge] = {
+            if let year = yearInt {
+                return Badge.allBadges.filter { badge in
+                    guard let date = badge.getLatestVisitDate(from: filteredStates) else { return false }
+                    return Calendar.current.component(.year, from: date) == year
+                }
+            } else {
+                return Badge.allBadges.filter { badge in
+                    badge.getLatestVisitDate(from: filteredStates) != nil
+                }
+            }
+        }()
+        return Group {
+            if !badges.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(badges) { badge in
+                                VStack(spacing: 8) {
+                                    Image(systemName: badge.imageName)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 40, height: 40)
+                                        .foregroundStyle(.yellow)
+                                    Text(badge.name)
+                                        .font(.caption)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(width: 80)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+    
     var body: some View {
         TabView(selection: $selectedYear) {
             ForEach(visitYears, id: \.self) { year in
                 List {
                     Section {
                         StatsView(states: filteredStates, isYearView: selectedYear != "all", selectedYear: selectedYear)
+                    }
+                    Section {
+                        badgesCard
                     }
                     Section(year == "all" ? "All States Visited" : "States Visited in \(year)") {
                         ForEach(filteredStates) { state in
@@ -247,7 +297,7 @@ struct PassportView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     let image = generateShareImage(
-                        for: selectedYear == "all" ? allTimeStates : statesForYear(Int(selectedYear) ?? 0)
+                        for: selectedYear == "all" ? allTimeStates : allTimeStates, selectedYear: selectedYear
                     )
                     shareImage = Image(uiImage: image)
                     isShareSheetPresented = true

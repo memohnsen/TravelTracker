@@ -119,7 +119,7 @@ struct ShareableStatsView: View {
             // Footer
             HStack {
                 Text("Tracked with")
-                Text("Travel Tracker")
+                Text("TrekBook")
                     .fontWeight(.semibold)
                 Text("🧭")
             }
