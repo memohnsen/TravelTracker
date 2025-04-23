@@ -134,17 +134,53 @@ class StatesViewModel: ObservableObject {
         }
     }
     
+    func updateVisitDates(for stateId: String, newDate: Date) {
+        if let index = states.firstIndex(where: { $0.id == stateId }) {
+            var state = states[index]
+            state.visitDates.append(newDate)
+            states[index] = state
+            visitedStates.insert(stateId)
+            saveVisitedStates()
+            checkForNewBadges()
+        }
+    }
+    
+    func updateVisitDate(for stateId: String, at index: Int, newDate: Date) {
+        if let stateIndex = states.firstIndex(where: { $0.id == stateId }) {
+            var state = states[stateIndex]
+            guard state.visitDates.indices.contains(index) else { return }
+            state.visitDates[index] = newDate
+            states[stateIndex] = state
+            saveVisitedStates()
+        }
+    }
+    
+    func removeVisitDate(for stateId: String, at indexToRemove: Int) {
+        if let index = states.firstIndex(where: { $0.id == stateId }) {
+            var state = states[index]
+            if state.visitDates.indices.contains(indexToRemove) {
+                state.visitDates.remove(at: indexToRemove)
+                if state.visitDates.isEmpty {
+                    visitedStates.remove(stateId)
+                }
+                states[index] = state
+                saveVisitedStates()
+                checkForLostBadges()
+            }
+        }
+    }
+    
     func toggleStateVisited(_ stateId: String) {
         if let index = states.firstIndex(where: { $0.id == stateId }) {
             var state = states[index]
-            if state.visitDate == nil {
-                state.visitDate = Date()
+            if state.visitDates.isEmpty {
+                state.visitDates.append(Date())
                 visitedStates.insert(stateId)
-                checkForNewBadges() // Check for new badges after adding a state
+                checkForNewBadges()
             } else {
-                state.visitDate = nil
+                state.visitDates = []
                 visitedStates.remove(stateId)
-                checkForLostBadges() // Check if any badges should be removed
+                checkForLostBadges()
             }
             states[index] = state
             saveVisitedStates()
@@ -168,44 +204,26 @@ class StatesViewModel: ObservableObject {
         saveEarnedBadges()
     }
     
-    func updateVisitDate(for stateId: String, date: Date) {
-        if let index = states.firstIndex(where: { $0.id == stateId }) {
-            var state = states[index]
-            state.visitDate = date
-            states[index] = state
-            visitedStates.insert(stateId)
-            saveVisitedStates()
-            checkForNewBadges() // Check for new badges after updating a date
-        }
-    }
-    
     private func loadVisitedStates() {
-        // Load basic visited states set
         if let visitedData = UserDefaults.standard.data(forKey: "VisitedStates"),
            let decoded = try? JSONDecoder().decode(Set<String>.self, from: visitedData) {
             visitedStates = decoded
         }
-        
-        // Load states with their visit dates
         if let statesData = UserDefaults.standard.data(forKey: "StatesWithDates"),
            let decodedStates = try? JSONDecoder().decode([USState].self, from: statesData) {
-            // Update states array with saved visit dates
             for savedState in decodedStates {
                 if let index = states.firstIndex(where: { $0.id == savedState.id }) {
-                    states[index].visitDate = savedState.visitDate
+                    states[index].visitDates = savedState.visitDates
                 }
             }
         }
     }
     
     func saveVisitedStates() {
-        // Save basic visited states set
         if let encoded = try? JSONEncoder().encode(visitedStates) {
             UserDefaults.standard.set(encoded, forKey: "VisitedStates")
         }
-        
-        // Save states with their visit dates
-        let statesWithDates = states.filter { $0.visitDate != nil }
+        let statesWithDates = states.filter { !$0.visitDates.isEmpty }
         if let encoded = try? JSONEncoder().encode(statesWithDates) {
             UserDefaults.standard.set(encoded, forKey: "StatesWithDates")
         }
@@ -220,7 +238,7 @@ class StatesViewModel: ObservableObject {
     func resetAllProgress() {
         // Clear all visit dates
         for index in states.indices {
-            states[index].visitDate = nil
+            states[index].visitDates = []
         }
         // Clear visited states set
         visitedStates.removeAll()
@@ -230,4 +248,4 @@ class StatesViewModel: ObservableObject {
         saveVisitedStates()
         saveEarnedBadges()
     }
-} 
+}

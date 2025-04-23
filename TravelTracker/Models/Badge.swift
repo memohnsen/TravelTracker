@@ -36,16 +36,16 @@ struct Badge: Identifiable, Codable {
         switch id {
         case "fifty_percent":
             // For percentage badges, use all visited states
-            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+            relevantStates = Set(states.filter { !$0.visitDates.isEmpty }.map { $0.id })
             guard relevantStates.count >= 25 else { return nil }
             
         case "all_states":
-            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+            relevantStates = Set(states.filter { !$0.visitDates.isEmpty }.map { $0.id })
             guard relevantStates.count == 50 else { return nil }
             
         case "continental":
             let nonContinental = Set(["HI", "AK"])
-            relevantStates = Set(states.filter { $0.visitDate != nil }.map { $0.id })
+            relevantStates = Set(states.filter { !$0.visitDates.isEmpty }.map { $0.id })
                 .subtracting(nonContinental)
             guard relevantStates.count == 48 else { return nil }
             
@@ -99,11 +99,11 @@ struct Badge: Identifiable, Codable {
         
         // Get all visit dates for relevant states
         let visitDates = states
-            .filter { relevantStates.contains($0.id) && $0.visitDate != nil }
-            .compactMap { $0.visitDate }
+            .filter { relevantStates.contains($0.id) && !$0.visitDates.isEmpty }
+            .flatMap { $0.visitDates }
         
         // Return the latest date if all required states are visited
-        return !visitDates.isEmpty && visitDates.count == relevantStates.count
+        return !visitDates.isEmpty && visitDates.count >= relevantStates.count
             ? visitDates.max()
             : nil
     }

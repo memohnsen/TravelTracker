@@ -5,18 +5,18 @@ struct USState: Identifiable, Codable, Equatable {
     let id: String // State abbreviation
     let name: String
     let coordinates: CLLocationCoordinate2D
-    var visitDate: Date?
+    var visitDates: [Date] = []
     
     // For Codable support
     enum CodingKeys: String, CodingKey {
-        case id, name, latitude, longitude, visitDate
+        case id, name, latitude, longitude, visitDates
     }
     
-    init(id: String, name: String, latitude: Double, longitude: Double, visitDate: Date? = nil) {
+    init(id: String, name: String, latitude: Double, longitude: Double, visitDates: [Date] = []) {
         self.id = id
         self.name = name
         self.coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        self.visitDate = visitDate
+        self.visitDates = visitDates
     }
     
     init(from decoder: Decoder) throws {
@@ -26,7 +26,7 @@ struct USState: Identifiable, Codable, Equatable {
         let latitude = try container.decode(Double.self, forKey: .latitude)
         let longitude = try container.decode(Double.self, forKey: .longitude)
         coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        visitDate = try container.decodeIfPresent(Date.self, forKey: .visitDate)
+        visitDates = try container.decodeIfPresent([Date].self, forKey: .visitDates) ?? []
     }
     
     func encode(to encoder: Encoder) throws {
@@ -35,7 +35,7 @@ struct USState: Identifiable, Codable, Equatable {
         try container.encode(name, forKey: .name)
         try container.encode(coordinates.latitude, forKey: .latitude)
         try container.encode(coordinates.longitude, forKey: .longitude)
-        try container.encodeIfPresent(visitDate, forKey: .visitDate)
+        try container.encode(visitDates, forKey: .visitDates)
     }
     
     // Add Equatable conformance
@@ -44,6 +44,6 @@ struct USState: Identifiable, Codable, Equatable {
         lhs.name == rhs.name &&
         lhs.coordinates.latitude == rhs.coordinates.latitude &&
         lhs.coordinates.longitude == rhs.coordinates.longitude &&
-        lhs.visitDate == rhs.visitDate
+        lhs.visitDates == rhs.visitDates
     }
 } 

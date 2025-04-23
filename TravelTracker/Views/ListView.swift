@@ -4,7 +4,7 @@ struct ListView: View {
     @EnvironmentObject var viewModel: StatesViewModel
     @State private var sortOption = SortOption.alphabetical
     @State private var filterOption = FilterOption.all
-    @State private var selectedState: USState?
+    @State private var selectedStateId: String? = nil
     @State private var isShowingDatePicker = false
     
     enum SortOption {
@@ -33,20 +33,20 @@ struct ListView: View {
             return filtered.sorted { $0.name < $1.name }
         case .visitDateNewest:
             return filtered.sorted { state1, state2 in
-                switch (state1.visitDate, state2.visitDate) {
-                case (nil, nil): return state1.name < state2.name
-                case (nil, _): return false
-                case (_, nil): return true
-                case (let date1?, let date2?): return date1 > date2
+                switch (state1.visitDates, state2.visitDates) {
+                case ([], []): return state1.name < state2.name
+                case ([], _): return false
+                case (_, []): return true
+                case (let dates1, let dates2): return dates1.max() ?? Date() > dates2.max() ?? Date()
                 }
             }
         case .visitDateOldest:
             return filtered.sorted { state1, state2 in
-                switch (state1.visitDate, state2.visitDate) {
-                case (nil, nil): return state1.name < state2.name
-                case (nil, _): return false
-                case (_, nil): return true
-                case (let date1?, let date2?): return date1 < date2
+                switch (state1.visitDates, state2.visitDates) {
+                case ([], []): return state1.name < state2.name
+                case ([], _): return false
+                case (_, []): return true
+                case (let dates1, let dates2): return dates1.min() ?? Date() < dates2.min() ?? Date()
                 }
             }
         }
@@ -58,10 +58,12 @@ struct ListView: View {
                 VStack(alignment: .leading) {
                     Text(state.name)
                         .font(.headline)
-                    if let visitDate = state.visitDate {
-                        Text("Visited: \(visitDate.formatted(date: .long, time: .omitted))")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                    if !state.visitDates.isEmpty {
+                        ForEach(state.visitDates.sorted(by: >), id: \.self) { date in
+                            Text("Visited: \(date.formatted(date: .long, time: .omitted))")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -72,7 +74,7 @@ struct ListView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                selectedState = state
+                selectedStateId = state.id
                 isShowingDatePicker = true
             }
         }
@@ -128,46 +130,62 @@ struct ListView: View {
                 .padding(.bottom, 80)
             }
         }
-        .sheet(item: $selectedState) { state in
-            NavigationStack {
-                Form {
-                    Section("Visit Status") {
-                        Toggle("Visited", isOn: Binding(
-                            get: { viewModel.visitedStates.contains(state.id) },
-                            set: { isVisited in
-                                viewModel.toggleStateVisited(state.id)
-                            }
-                        ))
-                    }
-                    
-                    if viewModel.visitedStates.contains(state.id) {
-                        Section("Visit Details") {
-                            DatePicker(
-                                "Visit Date",
-                                selection: Binding(
-                                    get: { state.visitDate ?? Date() },
-                                    set: { date in
-                                        viewModel.updateVisitDate(for: state.id, date: date)
-                                        selectedState = nil  // Dismiss sheet after date selection
+        .sheet(item: Binding(
+            get: { selectedStateId.map { IdentifiableString(id: $0) } },
+            set: { selectedStateId = $0?.id }
+        )) { identifiable in
+            let stateId = identifiable.id
+            if let state = viewModel.states.first(where: { $0.id == stateId }) {
+                NavigationStack {
+                    Form {
+                        Section("Visit Status") {
+                            Toggle("Visited", isOn: Binding(
+                                get: { viewModel.visitedStates.contains(state.id) },
+                                set: { isVisited in
+                                    viewModel.toggleStateVisited(state.id)
+                                }
+                            ))
+                        }
+                        if viewModel.visitedStates.contains(state.id) {
+                            Section("Visit Details") {
+                                Button("Add Visit Date") {
+                                    viewModel.updateVisitDates(for: state.id, newDate: Date())
+                                }
+                                if !state.visitDates.isEmpty {
+                                    ForEach(Array(state.visitDates.sorted(by: >).enumerated()), id: \.element) { idx, date in
+                                        HStack {
+                                            DatePicker(
+                                                "Visited",
+                                                selection: Binding(
+                                                    get: { date },
+                                                    set: { newDate in
+                                                        viewModel.updateVisitDate(for: state.id, at: idx, newDate: newDate)
+                                                    }
+                                                ),
+                                                displayedComponents: .date
+                                            )
+                                            Spacer()
+                                            Button(role: .destructive) {
+                                                viewModel.removeVisitDate(for: state.id, at: idx)
+                                            } label: {
+                                                Image(systemName: "trash")
+                                            }
+                                        }
                                     }
-                                ),
-                                displayedComponents: .date
-                            )
+                                }
+                            }
                         }
                     }
+                    .navigationTitle(state.name)
+                    .navigationBarTitleDisplayMode(.inline)
                 }
-                .navigationTitle(state.name)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            selectedState = nil
-                        }
-                    }
-                }
+                .presentationDetents([.fraction(0.5), .large])
+                .presentationDragIndicator(.visible)
             }
-            .presentationDetents([.height(300)])
-            .presentationDragIndicator(.visible)
         }
     }
-} 
+}
+
+struct IdentifiableString: Identifiable, Hashable {
+    let id: String
+}
